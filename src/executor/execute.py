@@ -13,8 +13,12 @@ from src.executor.runner import Runner
 # WITHIN 1h
 # RETURN (a[1].start, a[i].end, b.end)
 structure = SeqOperator(
-    KleeneClosureOperator(PrimitiveEventStructure(event_type="BikeTrip", name="a")),
-    PrimitiveEventStructure(event_type="BikeTrip", name="b")
+    KleeneClosureOperator(
+        PrimitiveEventStructure(event_type="BikeTrip", name="a"),
+        min_size=1,
+        max_size=8,   # tune
+    ),
+    PrimitiveEventStructure(event_type="BikeTrip", name="b"),
 )
 
 same_bike_chain = KCIndexCondition(
@@ -32,7 +36,7 @@ chain_contiguity = KCIndexCondition(
 )
 last_a_bike_vs_b_bike = EqCondition(
     Variable("b", lambda ev: ev["bike_id"]),
-    Variable("a", lambda ev: ev["bike_id"]),  # engine binds this to the last 'a' in the KC by default
+    Variable("a", lambda lst: lst[-1]["bike_id"])    # KC list -> last
 )
 
 
