@@ -10,7 +10,7 @@ from src.ingestion.CitiBikeDataFormatter import *
 
 
 class Runner:
-    def __init__(self, pattern: Pattern, bursty:bool):
+    def __init__(self, pattern: Pattern, bursty:bool, limit:int|None=None):
         try:
             self.cep = CEP([pattern])
         except Exception as e:
@@ -20,7 +20,7 @@ class Runner:
             if bursty:
                 raise Exception("Not implemented yet")
             else:
-                self.events = citi_bike_stream()
+                self.events = citi_bike_stream(limit=limit)
         except Exception as e:
             print(f"Error while creating Input Stream - {str(e)}")
             raise e

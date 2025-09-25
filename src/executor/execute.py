@@ -48,9 +48,9 @@ hot_paths_pattern = Pattern(
     timedelta(hours=1)
 )
 
-def execute(pattern=hot_paths_pattern, bursty=False):
+def execute(pattern=hot_paths_pattern, bursty=False, limit=100):
     try:
-        runner = Runner(pattern=pattern, bursty=bursty)
+        runner = Runner(pattern=pattern, bursty=bursty, limit=100)
         runner.run()
     except:
         pass
