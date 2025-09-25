@@ -1,8 +1,8 @@
-import csv
 import os
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo  # py>=3.9
-from opencep.stream.Stream import InputStream
+
+from src.ingestion.CsvFileStream import CSVInputStream, BurstyInputStream
 
 NY_TZ = ZoneInfo("America/New_York")
 _CITY_BIKE_CSV=os.path.abspath("./data/citibike_data.csv")
@@ -79,38 +79,13 @@ def citi_bike_row_2_event(row: dict) -> dict:
         "type": "BikeTrip",   # if your DataFormatter derives type from payload, this helps
     }
 
-class CSVInputStream(InputStream):
 
-    def __init__(self, file_path: str=_CITY_BIKE_CSV, row_to_event=citi_bike_row_2_event, limit: int|None = None):
-        super().__init__()
-        n = 0
-        with open(file_path, newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                ev = row_to_event(row)
-                if ev is None:
-                    continue
-                self._stream.put(ev)
-                n+=1
-                if limit and n >= limit:
-                    break
-        self.close()
+def citi_bike_stream(limit=None):
+    return CSVInputStream(file_path=_CITY_BIKE_CSV,row_to_event=citi_bike_row_2_event, limit=limit)
 
 
-
-
-class BurstyInputStream(InputStream):
-    def __init__(self, events_iterable, schedule_fn):
-        super().__init__()
-        # schedule_fn: i -> logical arrival bucket or sequence
-        for i, ev in enumerate(events_iterable):
-            ev["_arrival_seq"] = schedule_fn(i, ev)  # purely logical
-            self._stream.put(ev)
-        self.close()
-
-
-
-
-
+def citi_bike_bursty(limit=None):
+    pass # TODO
+    #return BurstyInputStream
 
 
