@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = ""
+authors = [
+    {name = "Miguel Arroyo"},
+    {name = "Luca Checchin"},
+    {name = "Nikolas Kivimäki"}
+
+]
+version = "0.1.0"
+description = ""
+requires-python = ">= 3.13"
+dependencies = [
+    "redis>=4.0"
+]
+readme = "README.md"
