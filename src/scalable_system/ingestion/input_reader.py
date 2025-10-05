@@ -2,12 +2,13 @@ import csv, time
 from dateutil import parser as dtparse
 from datetime import timezone
 from typing import Optional
-from ..io.redis_client import get_client, get_default_client
+from ..io.redis_client import get_client, get_default_client, get_client_in_docker_net
 from ..config import N_SHARDS, STREAM_PREFIX
 from ..core.sharding import shard_for_bike, stream_name
 from pathlib import Path
 import os
 from typing import List
+from redis import ConnectionError
 
 def now_ms(): return int(time.time()*1000)
 
@@ -43,16 +44,23 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
         "ended_at" :  "Stop Time"
         
     }
-
     i_files = get_input_files(dir_path)
-    r = get_default_client()
-    print(r.ping())
+    
+    try: 
+        r = get_client_in_docker_net()
+        if r.ping():
+            print("Connected to Redis")
+    except Exception as e:
+        raise ConnectionError(f"Not able to connect to Redis container: {e}")
+    
     n = 0
     nsh = n_shards or N_SHARDS
+    print("Reading Events from CSV...")
     for file in i_files:
+        print(f"File : {file}")
         with open(file, newline="") as f:
             reader = csv.DictReader(f)
-            
+
             for row in reader:
                 bike_id = row.get(mapping["bike_id"])
                 if not bike_id: continue
@@ -72,11 +80,15 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
                     b"ended_at_ms": str(ended_ms).encode(),
                     b"ingest_ts_ms": str(now_ms()).encode(),
                 })
-                                
+                
+                print(f"{res} --> {sname}")
+               
                 n += 1
                 if max_rows and n >= max_rows: break
             
     print(f"Produced {n} events into {nsh} shards.")
+
+
 
 
 

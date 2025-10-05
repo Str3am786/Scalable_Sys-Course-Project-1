@@ -4,8 +4,10 @@ from .lru import LRU
 from ..config import ONE_HOUR_MS, HOT_END_STATIONS
 from ..io.matches_sink import emit_match
 
+open
+
 def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
-                          bike_id: str, trip: Trip, r):
+                          bike_id: str, trip: Trip, r, output_stream ):
     evicted = lru.touch(bike_id)
     if evicted: state.pop(evicted, None)
     ch = state.get(bike_id)
@@ -33,7 +35,7 @@ def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
             (trip.ended_at_ms - ch.first_ts_ms) <= ONE_HOUR_MS and
             ch.length_a >= 1):
             emit_match(r, bike_id, ch.first_start_station, ch.last_end_station,
-                       trip.end_station_id, ch.first_ts_ms, trip.ended_at_ms, ch.length_a, trip.ingest_ts_ms)
+                       trip.end_station_id, ch.first_ts_ms, trip.ended_at_ms, ch.length_a, trip.ingest_ts_ms, output_stream)
         # extend chain
         ch.last_end_station = trip.end_station_id
         ch.last_ts_ms = trip.ended_at_ms

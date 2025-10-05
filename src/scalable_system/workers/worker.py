@@ -1,5 +1,5 @@
 from typing import Dict
-from ..io.redis_client import get_client
+from ..io.redis_client import get_client, get_client_in_docker_net
 from ..config import STREAM_PREFIX, N_SHARDS, MAX_BIKES, MAX_TRIPS_PER_BIKE
 from ..core.sharding import stream_name
 from ..core.lru import LRU
@@ -10,19 +10,32 @@ def _b(fields, key):
     v = fields.get(key.encode());
     return v.decode() if v is not None else None
 
+def get_match_stream(filename : str = "/app/matches/matches.txt"):
+    return open(filename,"a")
+
 def run_worker(shard_idx: int, start_id: str = "0-0"):
-    r = get_client()
+    try: 
+        r = get_client_in_docker_net()
+        if r.ping():
+            print("Worker Connected to Redis")
+    except Exception as e:
+        raise ConnectionError(f"Not able to connect to Redis container: {e}")
+    
     sname = stream_name(STREAM_PREFIX, shard_idx)
     state: Dict[str, Chain] = {}
     lru = LRU(MAX_BIKES)
     last_id = start_id
-    print(f"[worker {shard_idx}] reading {sname} from {start_id}")
+    # print(f"[worker {shard_idx}] reading {sname} from {start_id}")
+    output_stream = get_match_stream()
     while True:
-        resp = r.xread({sname: last_id}, block=1000, count=1000)
+        # print(f"[worker {shard_idx}] waiting for events from {sname}")
+        resp = r.xread({sname:last_id}, block=1000, count=1000)
+        # print(resp)
         if not resp: continue
         _, entries = resp[0]
         for msg_id, fields in entries:
-            bike_id = _b(fields, "bike_id");
+        
+            bike_id = _b(fields, "bike_id")
             ss = _b(fields, "start_station_id"); es = _b(fields, "end_station_id")
             st = _b(fields, "started_at_ms");   et = _b(fields, "ended_at_ms")
             ig = _b(fields, "ingest_ts_ms")
@@ -36,5 +49,5 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
                 ended_at_ms=int(et),
                 ingest_ts_ms=int(ig or 0),
             )
-            process_trip_for_bike(state, lru, bike_id, trip, r)
+            process_trip_for_bike(state, lru, bike_id, trip, r,output_stream)
             last_id = msg_id
