@@ -1,20 +1,20 @@
 [build-system]
-requires = ["setuptools >= 61.0"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = ""
-authors = [
-    {name = "Miguel Arroyo"},
-    {name = "Luca Checchin"},
-    {name = "Nikolas Kivimäki"}
-
-]
+name = "scalable_system"
 version = "0.1.0"
-description = ""
-requires-python = ">= 3.13"
+description = "Scalable systems course project: Redis streams + sharded workers + shedding"
+requires-python = ">=3.12"
 dependencies = [
-    "dateutil",
-    "redis>=4.0",
+  "redis>=5.0.0,<6",             # runtime dependency used by io/redis_client.py
+  "python-dateutil>=2.8,<3",
 ]
-readme = "README.md"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["scalable_system*"]

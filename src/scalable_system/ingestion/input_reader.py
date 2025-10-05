@@ -2,12 +2,13 @@ import csv, time
 from dateutil import parser as dtparse
 from datetime import timezone
 from typing import Optional
-from ..io.redis_client import get_client, get_default_client
+from ..io.redis_client import get_client
 from ..config import N_SHARDS, STREAM_PREFIX
 from ..core.sharding import shard_for_bike, stream_name
 from pathlib import Path
 import os
 from typing import List
+from glob import glob
 
 def now_ms(): return int(time.time()*1000)
 
@@ -20,17 +21,17 @@ def to_int_safe(v):
     try: return int(v)
     except: return None
 
-def get_input_files(dir : str) -> List[str]:
-    month_dirs = [ file for file in os.listdir(path=dir)]
+def get_input_files(dir: str) -> List[str]:
     files = []
-
-    for d in month_dirs:
-        i = int(d.split("_")[0])
-        filename = os.listdir(Path(dir,d))[0]
-        relative_path = Path(dir,d,filename)
-        files.append(relative_path)
-        
+    for d in sorted(os.listdir(path=dir)):
+        full = Path(dir, d)
+        if not full.is_dir():
+            continue
+        # add ALL csvs (sorted for determinism)
+        for f in sorted(glob(str(full / "*.csv"))):
+            files.append(f)
     return files
+
     
     
 def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Optional[int] = None):
@@ -45,11 +46,22 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
     }
 
     i_files = get_input_files(dir_path)
-    r = get_default_client()
+    r = get_client()
+
+    for _ in range(30):  # ~30s max
+        try:
+            r.ping()
+            break
+        except Exception:
+            time.sleep(1)
+    else:
+        raise RuntimeError("Redis not reachable")
+
     print(r.ping())
     n = 0
     nsh = n_shards or N_SHARDS
     for file in i_files:
+        print(f"[ingester] reading {file}")
         with open(file, newline="") as f:
             reader = csv.DictReader(f)
             
@@ -70,13 +82,21 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
                     b"end_station_id": str(end_sid).encode(),
                     b"started_at_ms": str(started_ms).encode(),
                     b"ended_at_ms": str(ended_ms).encode(),
-                    b"ingest_ts_ms": str(now_ms()).encode(),
+                    b"ingest_ts_ms": str(int(time.time()*1000)).encode(),
                 })
                                 
                 n += 1
+
+                if n % 100000 == 0:
+                    print(f"[ingester] produced {n} events so far")
+
                 if max_rows and n >= max_rows: break
             
     print(f"Produced {n} events into {nsh} shards.")
 
 
-
+if __name__ == "__main__":
+    import sys, os
+    base = sys.argv[1] if len(sys.argv) > 1 else os.getenv("DATA_DIR", "/data")
+    # Rows can be capped for quick tests with produce_csv(base, max_rows=5000)
+    produce_csv(base)

@@ -1,5 +1,17 @@
-import redis
+import time, redis
 from ..config import REDIS_URL
+
+def wait_for_redis(r, timeout=60):
+    deadline = time.time() + timeout
+    while True:
+        try:
+            r.ping()
+            return
+        except (redis.exceptions.BusyLoadingError,
+                redis.exceptions.ConnectionError):
+            if time.time() > deadline:
+                raise
+            time.sleep(0.25)
 
 def get_client() -> redis.Redis:
     # decode_responses=False to keep bytes and avoid accidental type coercion

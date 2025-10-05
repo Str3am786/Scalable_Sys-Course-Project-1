@@ -1,0 +1,52 @@
+version: "3.9"
+services:
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 1s
+      retries: 60
+
+  ingester:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      ROLE: ingester
+      REDIS_URL: redis://redis:6379/0
+      STREAM_PREFIX: trips:s
+      N_SHARDS: 8
+    volumes:
+      - ./data/2017-citibike-tripdata:/data:ro
+    depends_on: [redis]
+
+  workers:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      ROLE: workers
+      REDIS_URL: redis://redis:6379/0
+      STREAM_PREFIX: trips:s
+      MATCHES_STREAM: matches
+      N_SHARDS: 8
+      HOT_END_STATIONS: 519,497,402
+      LATENCY_SLA_MS: 3
+      MAX_BIKES: 200000
+      MAX_TRIPS_PER_BIKE: 16
+    depends_on: [redis]
+
+  shedding:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      ROLE: shedding
+      REDIS_URL: redis://redis:6379/0
+      CONTROL_STREAM: control:cmds
+      METRICS_STREAM: metrics:workers
+      LATENCY_SLA_MS: 1500
+    depends_on: [redis]
