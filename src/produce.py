@@ -5,7 +5,7 @@ if __name__ == "__main__":
     
     
     print("Start producing")
-    produce_csv("/app/data/",n_shards=8)
+    produce_csv("/app/data/1_January/d.csv",n_shards=8,max_rows=10)
     print("Finished")
     
     

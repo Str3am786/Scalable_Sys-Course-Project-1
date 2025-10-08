@@ -7,15 +7,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY pyproject.toml .
-RUN pip install .
-
 COPY src/ src/
+
+RUN pip install -e .
+
 
 
 ENV REDIS_URL=redis\
     N_SHARDS=8\
     STREAM_PREFIX=trips:\
-    HOT_END_STATIONS=519,497,402\
+    HOT_END_STATIONS=7,8,9\
     MAX_BIKES=200000\
     MAX_TRIPS_PER_BIKE=2200000
 

@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   producer:
     build:
@@ -10,6 +9,7 @@ services:
     stdin_open: true
     tty: true
     command: ["python" , "src/produce.py"]
+    # command: ["/bin/bash"]
     depends_on:
       - redis
       - consumer
@@ -24,6 +24,7 @@ services:
     stdin_open: true
     tty: true 
     command: ["python", "src/consume.py"]     
+    
     depends_on:
       - redis
 
@@ -32,3 +33,11 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
+
+  redisinsight:
+    container_name: redisinsight
+    image: redis/redisinsight
+    ports:
+      - "5540:5540"
+  
+

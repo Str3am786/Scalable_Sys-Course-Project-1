@@ -44,7 +44,7 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
         "ended_at" :  "Stop Time"
         
     }
-    i_files = get_input_files(dir_path)
+    # i_files = get_input_files(dir_path)
     
     try: 
         r = get_client_in_docker_net()
@@ -56,35 +56,37 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
     n = 0
     nsh = n_shards or N_SHARDS
     print("Reading Events from CSV...")
-    for file in i_files:
-        print(f"File : {file}")
-        with open(file, newline="") as f:
-            reader = csv.DictReader(f)
+    # for file in i_files:
+    file = dir_path
+    print(f"File : {file}")
+     
+    with open(file, newline="") as f:
+        reader = csv.DictReader(f)
 
-            for row in reader:
-                bike_id = row.get(mapping["bike_id"])
-                if not bike_id: continue
-                start_sid = to_int_safe(row.get(mapping["start_station_id"]))
-                end_sid   = to_int_safe(row.get(mapping["end_station_id"]))
-                if start_sid is None or end_sid is None: continue
-                started_ms = parse_ts_ms(row.get(mapping["started_at"]))
-                ended_ms   = parse_ts_ms(row.get(mapping["ended_at"]))
-                shard = shard_for_bike(bike_id, nsh)
-                sname = stream_name(STREAM_PREFIX, shard)
-                
-                res = r.xadd(sname, {
-                    b"bike_id": bike_id.encode(),
-                    b"start_station_id": str(start_sid).encode(),
-                    b"end_station_id": str(end_sid).encode(),
-                    b"started_at_ms": str(started_ms).encode(),
-                    b"ended_at_ms": str(ended_ms).encode(),
-                    b"ingest_ts_ms": str(now_ms()).encode(),
-                })
-                
-                print(f"{res} --> {sname}")
-               
-                n += 1
-                if max_rows and n >= max_rows: break
+        for row in reader:
+            bike_id = row.get(mapping["bike_id"])
+            if not bike_id: continue
+            start_sid = to_int_safe(row.get(mapping["start_station_id"]))
+            end_sid   = to_int_safe(row.get(mapping["end_station_id"]))
+            if start_sid is None or end_sid is None: continue
+            started_ms = parse_ts_ms(row.get(mapping["started_at"]))
+            ended_ms   = parse_ts_ms(row.get(mapping["ended_at"]))
+            shard = shard_for_bike(bike_id, nsh)
+            sname = stream_name(STREAM_PREFIX, shard)
+            
+            res = r.xadd(sname, {
+                b"bike_id": bike_id.encode(),
+                b"start_station_id": str(start_sid).encode(),
+                b"end_station_id": str(end_sid).encode(),
+                b"started_at_ms": str(started_ms).encode(),
+                b"ended_at_ms": str(ended_ms).encode(),
+                b"ingest_ts_ms": str(now_ms()).encode(),
+            })
+            
+            print(f"{res} --> {sname}")
+            
+            n += 1
+            if max_rows and n >= max_rows: break
             
     print(f"Produced {n} events into {nsh} shards.")
 
