@@ -20,7 +20,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: "consumer"
     volumes:
-      - ./matches:/app/matches:wo
+      - ./matches:/app/matches:rw
     stdin_open: true
     tty: true 
     command: ["python", "src/consume.py"]     
@@ -39,5 +39,25 @@ services:
     image: redis/redisinsight
     ports:
       - "5540:5540"
+
+  writer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: "writer"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MATCHES_FILE=/app/matches/matches.txt
+      - MATCH_WRITER_GROUP=file_writers
+      - MATCH_WRITER_NAME=writer-1
+    volumes:
+      - ./matches:/app/matches:rw
+    stdin_open: true
+    tty: true
+    command: [ "python", "src/writer.py" ]
+    depends_on:
+      - redis
+      - consumer
   
 

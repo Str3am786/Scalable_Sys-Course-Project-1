@@ -1,3 +1,4 @@
+import json, os, fcntl
 from typing import Dict
 from ..io.redis_client import get_client, get_client_in_docker_net
 from ..config import STREAM_PREFIX, N_SHARDS, MAX_BIKES, MAX_TRIPS_PER_BIKE
@@ -10,8 +11,10 @@ def _b(fields, key):
     v = fields.get(key.encode());
     return v.decode() if v is not None else None
 
+# TODO remove this fully
 def get_match_stream(filename : str = "/app/matches/matches.txt"):
-    return open(filename,"a")
+    return open(filename,"a", buffering=1)
+
 
 def run_worker(shard_idx: int, start_id: str = "0-0"):
     try: 
@@ -20,7 +23,7 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
             print("Worker Connected to Redis")
     except Exception as e:
         raise ConnectionError(f"Not able to connect to Redis container: {e}")
-    
+
     sname = stream_name(STREAM_PREFIX, shard_idx)
     state: Dict[str, Chain] = {}
     lru = LRU(MAX_BIKES)
@@ -49,5 +52,5 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
                 ended_at_ms=int(et),
                 ingest_ts_ms=int(ig or 0),
             )
-            process_trip_for_bike(state, lru, bike_id, trip, r,output_stream)
+            process_trip_for_bike(state, lru, bike_id, trip, r, output_stream)
             last_id = msg_id

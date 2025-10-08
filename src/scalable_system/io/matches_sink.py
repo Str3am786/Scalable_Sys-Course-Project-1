@@ -1,3 +1,4 @@
+import sys
 import time
 from ..config import MATCHES_STREAM, DEDUPE_TTL_MS
 
@@ -38,10 +39,13 @@ def emit_match(r, bike_id: str, a1_start: int, ai_end: int,
         if LOG_EVERY_MATCH_N > 0 and (_match_counter % LOG_EVERY_MATCH_N == 0):
             try:
                 latency = now_ms() - ingest_ts_ms
-                output_stream.write(f"[match] #{_match_counter} id={msg_id} || bike={bike_id} end={b_end} lenA={length_a} || ingest_latency_ms={latency}\n")
+                stream = sys.stdout
+                # output_stream.write(f"[match] #{_match_counter} id={msg_id} || bike={bike_id} end={b_end} lenA={length_a} || ingest_latency_ms={latency}\n")
                 print(f"[match] #{_match_counter} id={msg_id} "
                       f"bike={bike_id} end={b_end} lenA={length_a} "
-                      f"ingest_latency_ms={latency}")
-            except Exception:
-                pass
+                      f"ingest_latency_ms={latency}",
+                      file=stream,
+                      flush=True)
+            except Exception as e:
+                print(e, file=sys.stderr, flush=True)
         return msg_id

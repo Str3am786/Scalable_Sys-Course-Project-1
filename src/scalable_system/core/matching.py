@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import Dict
 from .models import Chain, Trip
 from .lru import LRU
@@ -11,7 +12,6 @@ def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
     if evicted: state.pop(evicted, None)
     ch = state.get(bike_id)
 
-    # start new chain if none
     if ch is None:
         ch = Chain(trip.start_station_id, trip.started_at_ms,
                    trip.end_station_id, trip.ended_at_ms)
@@ -20,8 +20,15 @@ def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
         state[bike_id] = ch
         return
 
+    # TODO optimise
+    if trip.started_at_ms < ch.last_ts_ms:
+        # Drop or log; for a minimal fix, drop out-of-order
+        print(f"OOO trip for bike {bike_id}: {trip.started_at_ms} < {ch.last_ts_ms}")
+        return
+
     # window reset if span would exceed 1h with this trip as b
     if ch.first_ts_ms < trip.ended_at_ms - ONE_HOUR_MS:
+        print("in the hour check thingy")
         ch = Chain(trip.start_station_id, trip.started_at_ms,
                    trip.end_station_id, trip.ended_at_ms)
         ch.length_a = 1
@@ -29,7 +36,7 @@ def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
         ch.trips.clear(); ch.trips.append((trip.start_station_id, trip.end_station_id, trip.ended_at_ms))
         state[bike_id] = ch
         return
-
+    print("after checking that the window is ok")
     # continuity a[i+1].start == a[i].end
     if trip.start_station_id == ch.last_end_station:
         # candidate b
@@ -47,5 +54,6 @@ def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
         # break in continuity
         ch = Chain(trip.start_station_id, trip.started_at_ms,
                    trip.end_station_id, trip.ended_at_ms)
+        ch.length_a = 1
         ch.trips.clear(); ch.trips.append((trip.start_station_id, trip.end_station_id, trip.ended_at_ms))
         state[bike_id] = ch
