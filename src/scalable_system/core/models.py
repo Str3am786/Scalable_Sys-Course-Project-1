@@ -18,4 +18,7 @@ class Chain:
     last_end_station: int
     last_ts_ms: int
     length_a: int = 1
-    trips: Deque[Tuple[int,int,int]] = field(default_factory=lambda: deque(maxlen=16))
+    trips: Deque[Tuple[int, int, int, int]] = field(
+        default_factory=lambda: deque(maxlen=64)
+    )
+
