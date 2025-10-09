@@ -27,12 +27,19 @@ services:
     
     depends_on:
       - redis
+      - redisstats
 
   redis:
     container_name: redis
     image: redis:latest
     ports:
       - "6379:6379"
+
+  redisstats:
+    container_name: redisstats
+    image: redis:latest
+    ports:
+      - "6380:6379"
 
   redisinsight:
     container_name: redisinsight
@@ -59,5 +66,18 @@ services:
     depends_on:
       - redis
       - consumer
-  
+
+
+  monitor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: "monitor"
+    stdin_open: true
+    tty: true
+    command: ["python" , "src/monitor.py"]
+    # command: ["/bin/bash"]
+    depends_on:
+      - redis
+      - redisstats
 

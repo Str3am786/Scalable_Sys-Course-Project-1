@@ -41,11 +41,11 @@ def emit_match(r, bike_id: str, a1_start: int, ai_end: int,
                 latency = now_ms() - ingest_ts_ms
                 stream = sys.stdout
                 # output_stream.write(f"[match] #{_match_counter} id={msg_id} || bike={bike_id} end={b_end} lenA={length_a} || ingest_latency_ms={latency}\n")
-                print(f"[match] #{_match_counter} id={msg_id} "
-                      f"bike={bike_id} end={b_end} lenA={length_a} "
-                      f"ingest_latency_ms={latency}",
-                      file=stream,
-                      flush=True)
+                # print(f"[match] #{_match_counter} id={msg_id} "
+                #       f"bike={bike_id} end={b_end} lenA={length_a} "
+                #       f"ingest_latency_ms={latency}",
+                #       file=stream,
+                #       flush=True)
             except Exception as e:
                 print(e, file=sys.stderr, flush=True)
         return msg_id

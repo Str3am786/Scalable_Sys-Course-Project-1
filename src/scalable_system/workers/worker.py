@@ -6,20 +6,27 @@ from ..core.sharding import stream_name
 from ..core.lru import LRU
 from ..core.models import Chain, Trip
 from ..core.matching import process_trip_for_bike
+import time
 
 def _b(fields, key):
-    v = fields.get(key.encode());
+    v = fields.get(key.encode())
     return v.decode() if v is not None else None
 
 # TODO remove this fully
 def get_match_stream(filename : str = "/app/matches/matches.txt"):
     return open(filename,"a", buffering=1)
 
+THRESHOLD = 2
+
 
 def run_worker(shard_idx: int, start_id: str = "0-0"):
     try: 
         r = get_client_in_docker_net()
-        if r.ping():
+        r_stats = get_client_in_docker_net("redisstats")
+        if r.ping() & r_stats.ping():
+            
+            print(r_stats.ts().create(f"metrics:{shard_idx}",retention_msecs=3600000,duplicate_policy='LAST'))
+            
             print("Worker Connected to Redis")
     except Exception as e:
         raise ConnectionError(f"Not able to connect to Redis container: {e}")
@@ -54,3 +61,17 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
             )
             process_trip_for_bike(state, lru, bike_id, trip, r, output_stream)
             last_id = msg_id
+            
+            now_ms = int(time.time() * 1000)
+            latency = now_ms - trip.ingest_ts_ms
+            
+            status = "OK"
+            if latency<THRESHOLD:
+                status = "SLOW"
+            
+            r_stats.ts().add(f"metrics:{shard_idx}:{bike_id},", "*" , latency, labels={"bike_id":bike_id,"status":status},duplicate_policy='LAST')
+
+            
+            
+        
+        

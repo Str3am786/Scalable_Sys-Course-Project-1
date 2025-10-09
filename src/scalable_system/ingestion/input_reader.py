@@ -83,7 +83,7 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
                 b"ingest_ts_ms": str(now_ms()).encode(),
             })
             
-            print(f"{res} --> {sname}")
+            # print(f"{res} --> {sname}")
             
             n += 1
             if max_rows and n >= max_rows: break
