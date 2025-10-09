@@ -47,6 +47,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: "consumer"
+    environment:
+      SHEDDING_MECH: "None"
     volumes:
       - ./matches:/app/matches:rw
     stdin_open: true
