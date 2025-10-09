@@ -19,7 +19,7 @@ RESPONSIVINESS = 3
 STATUS = np.zeros(N_SHARD)
 
 def shedding_policy(n_pendings : int, shard_id : int, r) -> None:
-    # print("SHED: ", r.hget(f"fshedding:{shard_id}", "active"))
+    print("SHED: ", r.hget(f"fshedding:{shard_id}", "active"))
 
     prev = STATUS[shard_id]
     if n_pendings > PENDING_TH:
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             
             
             # print("SHED: ", r_stream.hget(f"fshedding:{i}", "active")
-)
+
             
             key = f"{N_PREFIX}:{i}"
             start_ts = s[i] + 1  

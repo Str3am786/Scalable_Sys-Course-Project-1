@@ -13,6 +13,34 @@ services:
     depends_on:
       - redis
       - consumer
+  # producer2:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile
+  #   container_name: "producer2"
+  #   volumes:
+  #     - ./2017-citibike-tripdata:/app/data:ro
+  #   stdin_open: true
+  #   tty: true
+  #   command: ["python" , "src/produce.py"]
+  #   # command: ["/bin/bash"]
+  #   depends_on:
+  #     - redis
+  #     - consumer
+  # producer3:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile
+  #   container_name: "producer3"
+  #   volumes:
+  #     - ./2017-citibike-tripdata:/app/data:ro
+  #   stdin_open: true
+  #   tty: true
+  #   command: ["python" , "src/produce.py"]
+  #   # command: ["/bin/bash"]
+  #   depends_on:
+  #     - redis
+  #     - consumer
 
   consumer:
     build:
