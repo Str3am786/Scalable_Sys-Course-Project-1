@@ -88,7 +88,7 @@ if __name__ == "__main__":
             
             
             # print("SHED: ", r_stream.hget(f"fshedding:{i}", "active")
-)
+
             
             key = f"{N_PREFIX}:{i}"
             start_ts = s[i] + 1  
