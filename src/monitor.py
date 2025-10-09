@@ -1,105 +1,80 @@
-# import psutil
-# import redis
-# from redis.commands.timeseries import TimeSeries
-# import time
-# from datetime import datetime
-
-# def format_bytes(size):
-#     power = 1024
-#     n = 0
-#     labels = ['B', 'KB', 'MB', 'GB', 'TB']
-#     while size > power and n < len(labels) - 1:
-#         size /= power
-#         n += 1
-#     return f"{size:.2f} {labels[n]}"
-
-# def get_redis_stream_length(r: redis.Redis, stream_prefix="trips:s", n_shards=4):
-#     stream_lengths = {}
-#     for i in range(n_shards):
-#         stream = f"{stream_prefix}{i}"
-#         try:
-#             stream_lengths[stream] = r.xlen(stream)
-#         except Exception as e:
-#             stream_lengths[stream] = f"Error: {e}"
-#     return stream_lengths
-
-# def get_timeseries_latency_stats(ts: TimeSeries, metric_prefix="metrics:", n_shards=4):
-#     stats = {}
-#     for i in range(n_shards):
-#         key = f"{metric_prefix}{i}"
-#         try:
-#             info = ts.info(key)
-#             stats[key] = {
-#                 "totalSamples": info["totalSamples"],
-#                 "lastTimestamp": info["lastTimestamp"],
-#                 "lastValue": ts.get(key)
-#             }
-#         except Exception as e:
-#             stats[key] = f"Error: {e}"
-#     return stats
-
-# def get_system_usage():
-#     return {
-#         "cpu_percent": psutil.cpu_percent(interval=1),
-#         "memory_percent": psutil.virtual_memory().percent,
-#         "memory_used": format_bytes(psutil.virtual_memory().used),
-#         "memory_total": format_bytes(psutil.virtual_memory().total),
-#         "load_avg": psutil.getloadavg()
-#     }
-
-# def monitor(interval=5, redis_host="localhost", redis_port=6379, n_shards=4):
-#     r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
-#     ts = TimeSeries(r)
-
-#     while True:
-#         print("="*40)
-#         print(f"📡 Monitor Tick @ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
-#         print("\n🔢 Redis Stream Lengths:")
-#         stream_stats = get_redis_stream_length(r, n_shards=n_shards)
-#         for stream, length in stream_stats.items():
-#             print(f"{stream}: {length}")
-
-#         print("\n📈 Redis TimeSeries Latency Stats:")
-#         latency_stats = get_timeseries_latency_stats(ts, n_shards=n_shards)
-#         for key, data in latency_stats.items():
-#             print(f"{key}: {data}")
-
-#         print("\n💻 System Resource Usage:")
-#         sys_stats = get_system_usage()
-#         for k, v in sys_stats.items():
-#             print(f"{k}: {v}")
-
-#         time.sleep(interval)
-
-# monitor(redis_host="redisstats", redis_port=6379, n_shards=4)
-
-
 from scalable_system.io.redis_client import get_client_in_docker_net
 import time
-# Connect to Redis (adjust host/port if needed)
-r = get_client_in_docker_net()
-r_stats = get_client_in_docker_net("redsstats")
-
-# Get all INFO
-all_info = r.info()
+from datetime import datetime, timezone
+import numpy as np
+import zoneinfo
+from redis.exceptions import ResponseError
 
 
-while(True):
-# Or get specific sections
-    memory_info = r.info('memory')
-    cpu_info = r.info('cpu')
-    client_info = r.info('clients')
-    keyspace_info = r.info('keyspace')
-    command_stats = r.info('commandstats')
 
-    # Example outputs
-    print("Memory Used:", memory_info.get('used_memory_human'))
-    print("Memory RSS:", memory_info.get('used_memory_rss_human', 'N/A'))
-    print("CPU Sys:", cpu_info.get('used_cpu_user'))
-    print("Connected Clients:", client_info.get('connected_clients'))
-    print("Keys in DB0:", keyspace_info.get('db0', {}).get('keys', 'N/A'))
-
-    # Optionally, dump all stats:
-    # import pprint; pprint.pprint(all_info)
+if __name__ == "__main__":
+    # Connect to Redis (adjust host/port if needed)
+    r_stream = get_client_in_docker_net()
+    r_stats = get_client_in_docker_net("redisstats")
+    
+    print(r_stats.ping())
+    print(r_stats)
+    
+    N_SHARD = 10
+    N_PREFIX = "metrics:latency"
+    rate = 5 * 1000
+    
     time.sleep(3)
+    
+    latest_i = {
+            i : None for i in range(N_SHARD)
+        }
+    
+    while(True):
+    # Or get specific sections
+        memory_info = r_stream.info('memory')
+        cpu_info = r_stream.info('cpu')
+        client_info = r_stream.info('clients')
+        keyspace_info = r_stream.info('keyspace')
+        command_stats = r_stream.info('commandstats')
+    
+        # Example outputs
+        
+        print("------------------------------------------ STREAM STATS --------------------------------------------------")
+        print("Memory Used:", memory_info.get('used_memory_human'))
+        print("Memory RSS:", memory_info.get('used_memory_rss_human', 'N/A'))
+        print("CPU Sys:", cpu_info.get('used_cpu_user'))
+        print("Connected Clients:", client_info.get('connected_clients'))
+        print("Keys in DB0:", keyspace_info.get('db0', {}).get('keys', 'N/A'))
+        
+        print("--------------------------------------------- STATS ------------------------------------------------------")
+        s = [0] * N_SHARD  # last timestamp queried per shard
+        
+        for i in range(N_SHARD):
+            
+            key = f"{N_PREFIX}:{i}"
+            start_ts = s[i] + 1  
+            now_ts = int(time.time() * 1000)
+            prev = []
+            # Query for new buckets only
+            
+            
+            latest = None
+            try:
+                avg_samples = r_stats.ts().range(key, start_ts, now_ts, aggregation_type="avg", bucket_size_msec=rate,empty=True)
+                latest = r_stats.ts().info(key)
+            except ResponseError:
+                continue
+            
+            if latest:
+                                
+                if latest_i[i] == latest["last_timestamp"]:
+                    print("[",dt.now().strftime("%Y-%m-%d %H:%M:%S"),"]",f"Shard {i}: Waiting for Events")
+                    continue
+                latest_i[i] = latest["last_timestamp"]
+                
+            if avg_samples:
+                dt = datetime.fromtimestamp(avg_samples[-1][0]/ 1000,  tz=timezone.utc)  
+                helsinki_tz = zoneinfo.ZoneInfo('Europe/Helsinki')
+                local_dt = dt.astimezone(helsinki_tz)
+                                
+                print("[",dt.strftime("%Y-%m-%d %H:%M:%S"),"]",f"Shard {i} Latency Average: ", round(avg_samples[-1][-1],2))
+                # Update last timestamp to last returned bucket timestamp
+                s[i] = avg_samples[-1][0]
+                
+        time.sleep(5)

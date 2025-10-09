@@ -23,6 +23,9 @@ SERIES_PREFIX = "metrics:latency"
 
 def ensure_series(r, key, labels):
     try:
+        
+        print("CREATING")
+        
         r.ts().create(key, retention_msecs=3600000, labels=labels, duplicate_policy='last')
         
     except Exception as e:
@@ -33,14 +36,13 @@ def ensure_series(r, key, labels):
 
 
 
-def ts_key(shard_idx: int, bike_id: str):
+def ts_key(shard_idx: int):
     # one series per bike (per shard), easy to filter in RedisInsight
     return f"{SERIES_PREFIX}:{shard_idx}"
 
 def run_worker(shard_idx: int, start_id: str = "0-0"):
     
     start = datetime.now()
-
 
     try: 
         r = get_client_in_docker_net()
@@ -66,10 +68,10 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
         
         # Ingest events from redis stream
         if not resp: 
-            print("NOTHINGGGG")
+            # print("NOTHINGGGG")
             end = datetime.now()
-            print(f" TIME WORKER {shard_idx} ------------------------------------------------ {((end - start )/ 60)}----------------------------------------------------------------------------SLOW : {counter_slow}")
-            time.sleep(10)
+            # print(f" TIME WORKER {shard_idx} ------------------------------------------------ {((end - start )/ 60)}----------------------------------------------------------------------------SLOW : {counter_slow}")
+            # time.sleep(10)
             continue
         
         _, entries = resp[0]
@@ -101,20 +103,22 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
             
             # status = "SLOW" if latency > THRESHOLD else "OK"
             
-            key = ts_key(shard_idx, bike_id)
+            key = ts_key(shard_idx)
             
             labels = {
-            "shard": str(shard_idx),
-            "bike_id": bike_id,
-            "metric": "latency_ms",
-            "component": "consumer",
+                "shard": str(shard_idx),
+                "msg_id": msg_id,
+                "metric": "latency_ms",
+                "component": "consumer",
             }
-
+            
+            # print(f"[worker {shard_idx}] insert time series havin labels {labels}, and key {key}", )
 
             # ensure series exists with correct labels
             try:
                 r_stats.ts().add(key, "*", latency, duplicate_policy='last', labels=labels)
             except Exception:
+                            
                 ensure_series(r_stats, key, labels)
                 r_stats.ts().add(key, "*", latency, duplicate_policy='last', labels=labels)
                 
@@ -124,7 +128,7 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
             
             if l > THRESHOLD:
                 counter_slow += 1
-                print(f"WORKER {shard_idx} --- L: {l}")
+                # print(f"WORKER {shard_idx} --- L: {l}")
             
                 
             
