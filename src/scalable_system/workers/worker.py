@@ -52,6 +52,9 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
             print("Worker Connected to Redis")
     except Exception as e:
         raise ConnectionError(f"Not able to connect to Redis container: {e}")
+    
+    r.xgroup_create(f"trips:{shard_idx}", f"shard:{shard_idx}", id="$", mkstream=True)
+
 
     sname = stream_name(STREAM_PREFIX, shard_idx)
     state: Dict[str, Chain] = {}
@@ -63,7 +66,14 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
     
     while True:
         # print(f"[worker {shard_idx}] waiting for events from {sname}")
-        resp = r.xread({sname:last_id}, block=1000, count=1000)
+        #resp = r.xread({sname:last_id}, block=1000, count=1000)
+        resp = r.xreadgroup(
+            groupname=f"shard:{shard_idx}",
+            consumername=f"worker-{shard_idx}",
+            streams={f"trips:{shard_idx}": '>'},
+            count=1000,
+            block=1000)  # block up to 5s
+
         # print(resp)
         
         # Ingest events from redis stream
@@ -121,6 +131,8 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
                             
                 ensure_series(r_stats, key, labels)
                 r_stats.ts().add(key, "*", latency, duplicate_policy='last', labels=labels)
+            r.xack(f"trips:{shard_idx}", f"shard:{shard_idx}", msg_id)
+
                 
             # status = "SLOW" if latency > THRESHOLD else "OK"
             now_ms = time.time() * 1000
@@ -131,8 +143,7 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
                 # print(f"WORKER {shard_idx} --- L: {l}")
             
                 
-            
-            
+
             
         
         

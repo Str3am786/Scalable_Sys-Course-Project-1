@@ -36,6 +36,7 @@ if __name__ == "__main__":
         # Example outputs
         
         print("------------------------------------------ STREAM STATS --------------------------------------------------")
+
         print("Memory Used:", memory_info.get('used_memory_human'))
         print("Memory RSS:", memory_info.get('used_memory_rss_human', 'N/A'))
         print("CPU Sys:", cpu_info.get('used_cpu_user'))
@@ -46,6 +47,10 @@ if __name__ == "__main__":
         s = [0] * N_SHARD  # last timestamp queried per shard
         
         for i in range(N_SHARD):
+            
+            summary = r_stream.xpending(f"trips:{i}", f"shard:{i}")
+            print(summary)  # includes count, min ID, max ID, consumers info
+
             
             key = f"{N_PREFIX}:{i}"
             start_ts = s[i] + 1  
