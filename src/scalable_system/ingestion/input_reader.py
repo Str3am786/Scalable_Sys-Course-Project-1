@@ -53,13 +53,23 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
     except Exception as e:
         raise ConnectionError(f"Not able to connect to Redis container: {e}")
     
+
+    
     n = 0
     nsh = n_shards or N_SHARDS
     print("Reading Events from CSV...")
+    
+    print("Setting Up the load shedding system")
+    
+    for i in range(nsh):
+        print(r.hset(f"fshedding:{i}", mapping= {"active":"False"}))
+        print(i)
+        
     # for file in i_files:
     file = dir_path
     print(f"File : {file}")
-     
+    
+    
     with open(file, newline="") as f:
         reader = csv.DictReader(f)
 

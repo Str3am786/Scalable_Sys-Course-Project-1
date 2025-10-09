@@ -33,9 +33,11 @@ def _prune_chain_in_place(ch: Chain, b_ended_ms: int, window_ms: int) -> bool:
             return False
     return True
 
+def shedding_mech():
+    return 
 
 def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
-                          bike_id: str, trip: Trip, r, output_stream):
+                          bike_id: str, trip: Trip, r, output_stream, shedding_status:bool):
     # LRU eviction
     evicted = lru.touch(bike_id)
     if evicted:

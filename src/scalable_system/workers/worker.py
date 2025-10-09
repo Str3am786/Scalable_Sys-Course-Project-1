@@ -67,6 +67,7 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
     while True:
         # print(f"[worker {shard_idx}] waiting for events from {sname}")
         #resp = r.xread({sname:last_id}, block=1000, count=1000)
+        
         resp = r.xreadgroup(
             groupname=f"shard:{shard_idx}",
             consumername=f"worker-{shard_idx}",
@@ -83,6 +84,12 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
             # print(f" TIME WORKER {shard_idx} ------------------------------------------------ {((end - start )/ 60)}----------------------------------------------------------------------------SLOW : {counter_slow}")
             # time.sleep(10)
             continue
+        
+        # check load shedding flag
+        
+        active_shed = bool(r.hget(f"fshedding:{shard_idx}", "active"))
+        
+        
         
         _, entries = resp[0]
         for msg_id, fields in entries:
@@ -103,7 +110,7 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
             )
             
             # Evaluate events --> Match system
-            process_trip_for_bike(state, lru, bike_id, trip, r, output_stream)
+            process_trip_for_bike(state, lru, bike_id, trip, r, output_stream, shedding_status=active_shed)
             last_id = msg_id
             
                     
