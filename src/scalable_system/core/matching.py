@@ -76,6 +76,7 @@ def shedding_mech(chain: Chain) -> None:
     if mech == "drop_oldest":
         # Keep only the last N trips; fast, deterministic, very cheap
         n = max(0, SHED_KEEP_LAST_N)
+        print("IN dropping")
         if n == 0:
             # Keep exactly the very last trip (avoids degenerate empty chain issues)
             if chain.trips:

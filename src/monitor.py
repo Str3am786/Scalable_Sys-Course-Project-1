@@ -53,9 +53,7 @@ if __name__ == "__main__":
     latest_i = {
             i : None for i in range(N_SHARD)
         }
-    
-    time.sleep(20)
-    
+        
     while(True):
         
         memory_info = r_stream.info('memory')
@@ -80,16 +78,12 @@ if __name__ == "__main__":
             group_stats = r_stream.xpending(f"trips:{i}", f"shard:{i}")
             
             n_pendings = group_stats["pending"]
-                        
-            if i == 0:
-                n_pendings = 10
             
             shedding_policy(n_pendings,i,r_stream)
             
             
             # print("SHED: ", r_stream.hget(f"fshedding:{i}", "active")
 
-            
             key = f"{N_PREFIX}:{i}"
             start_ts = s[i] + 1  
             now_ts = int(time.time() * 1000)
@@ -118,7 +112,7 @@ if __name__ == "__main__":
                 helsinki_tz = zoneinfo.ZoneInfo('Europe/Helsinki')
                 local_dt = dt.astimezone(helsinki_tz)
                                 
-                print("[",dt.strftime("%Y-%m-%d %H:%M:%S"),"]",f"Shard {i} Latency Average: ", round(avg_samples[-1][-1],2))
+                print("[",dt.strftime("%Y-%m-%d %H:%M:%S"),"]",f"Shard {i} Latency Average: ", round(avg_samples[-1][-1],2) , f"s , Pending: {n_pendings}" )
                 # Update last timestamp to last returned bucket timestamp
                 s[i] = avg_samples[-1][0]
                 

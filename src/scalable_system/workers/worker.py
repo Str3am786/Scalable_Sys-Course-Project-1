@@ -87,9 +87,7 @@ def run_worker(shard_idx: int, start_id: str = "0-0"):
         
         # check load shedding flag
         
-        active_shed = bool(r.hget(f"fshedding:{shard_idx}", "active"))
-        
-        
+        active_shed = r.hget(f"fshedding:{shard_idx}", "active") == b'True'
         
         _, entries = resp[0]
         for msg_id, fields in entries:
