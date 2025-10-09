@@ -37,6 +37,7 @@ def get_input_files(dir : str) -> List[str]:
 def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Optional[int] = None):
     
     mapping = {
+        
         "bike_id": "Bike ID",
         "start_station_id": "Start Station ID",
         "end_station_id": "End Station ID",
@@ -57,14 +58,13 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
     
     n = 0
     nsh = n_shards or N_SHARDS
-    print("Reading Events from CSV...")
     
-    print("Setting Up the load shedding system")
-    
+    print("Setting Up the load shedding system...")
+
     for i in range(nsh):
-        print(r.hset(f"fshedding:{i}", mapping= {"active":"False"}))
-        print(i)
+        r.hset(f"fshedding:{i}", mapping= {"active":"False"})
         
+    print("Reading Events from CSV...")
     # for file in i_files:
     file = dir_path
     print(f"File : {file}")
@@ -74,6 +74,7 @@ def produce_csv(dir_path : str, n_shards: Optional[int] = None, max_rows: Option
         reader = csv.DictReader(f)
 
         for row in reader:
+            
             bike_id = row.get(mapping["bike_id"])
             if not bike_id: continue
             start_sid = to_int_safe(row.get(mapping["start_station_id"]))
