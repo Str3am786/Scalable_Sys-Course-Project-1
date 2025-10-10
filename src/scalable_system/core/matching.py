@@ -69,6 +69,7 @@ def shedding_mech(chain: Chain) -> None:
     All strategies keep the chain consistent with your existing logic.
     """
     mech = (SHEDDING_MECH or "None").strip().lower()
+    print(mech)
 
     if mech == "none":
         return
@@ -93,12 +94,19 @@ def shedding_mech(chain: Chain) -> None:
         # Drop a fixed number of oldest trips (once per call)
         k = max(0, SHED_DROP_K)
         for _ in range(min(k, len(chain.trips))):
-            chain.trips.popleft()
+            print("DROPPED CHAIN:", chain.trips.popleft())
+
         if not chain.trips and k > 0:
             # Preserve the latest element if we nuked everything
             # (this is safer for downstream continuity checks)
             # NOTE: If you really want to allow empty chains, remove this block.
-            pass
+            # Clear meta so downstream checks don't see stale continuity
+            chain.first_start_station = -1
+            chain.first_ts_ms = 0
+            chain.last_end_station = -1
+            chain.last_ts_ms = 0
+            chain.length_a = 0
+            return
         _recalc_chain_meta(chain)
         return
 
@@ -143,6 +151,9 @@ def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
 
     if shedding_status:
         shedding_mech(ch)
+        state[bike_id] = _init_chain_from_trip(trip)
+        return
+
     # Drop out-of-order (or buffer if you later add a reorder heap)
     if trip.started_at_ms < ch.last_ts_ms:
         return
@@ -161,17 +172,21 @@ def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
     if (trip.end_station_id % 10) in HOT_END_STATIONS \
        and (trip.ended_at_ms - ch.first_ts_ms) <= ONE_HOUR_MS \
        and ch.length_a >= 1:
-        emit_match(
-            r, bike_id,
-            ch.first_start_station,      # a[1].start
-            ch.last_end_station,         # a[i].end
-            trip.end_station_id,         # b.end
-            ch.first_ts_ms,              # a[1].started_at
-            trip.ended_at_ms,            # b.ended_at
-            ch.length_a,                 # |a|
-            trip.ingest_ts_ms,
-            output_stream
-        )
+        n = len(ch.trips)
+        a_last_end = ch.last_end_station
+        for i in range(n):
+            a1_start, _, a1_started_ms, _ = ch.trips[i]
+            emit_match(
+                r, bike_id,
+                a1_start,             # a[1].start of this suffix
+                a_last_end,           # a[i].end (end of last A)
+                trip.end_station_id,  # b.end
+                a1_started_ms,        # a[1].started_at
+                trip.ended_at_ms,     # b.ended_at
+                n - i,                # |a| = length of this suffix
+                trip.ingest_ts_ms,
+                output_stream
+            )
 
     # Extend chain (this trip becomes new rightmost a[i])
     ch.trips.append((trip.start_station_id, trip.end_station_id, trip.started_at_ms, trip.ended_at_ms))

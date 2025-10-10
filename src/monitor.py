@@ -18,14 +18,13 @@ RESPONSIVINESS = 3
 
 STATUS = np.zeros(N_SHARD)
 
-def shedding_policy(n_pendings : int, shard_id : int, r) -> None:
+def shedding_policy(n_pendings : int, shard_id : int, r, slow: bool = False) -> None:
     print("SHED: ", r.hget(f"fshedding:{shard_id}", "active"))
 
     prev = STATUS[shard_id]
-    if n_pendings > PENDING_TH:
-        
-        if STATUS[shard_id] < 3: 
-            STATUS[shard_id]+= 1
+    if (n_pendings > PENDING_TH) or slow:
+        if STATUS[shard_id] < 3:
+            STATUS[shard_id] += 1
     else:
         if STATUS[shard_id] > 0:
             STATUS[shard_id] -= 1
@@ -91,15 +90,17 @@ if __name__ == "__main__":
             # Query for new buckets only
             latest = None
             try:
-                
-                avg_samples = r_stats.ts().range(key, start_ts, now_ts, aggregation_type="avg", bucket_size_msec=rate,empty=True)
+                avg_samples = r_stats.ts().range(
+                    key, start_ts, now_ts, 
+                    aggregation_type="avg", 
+                    bucket_size_msec=rate,
+                    empty=True
+                )
                 latest = r_stats.ts().info(key)
-    
             except ResponseError:
                 continue
             
             if latest:    
-                
                 if latest_i[i] == latest["last_timestamp"]:
                     print("[",dt.now().strftime("%Y-%m-%d %H:%M:%S"),"]",f"Shard {i}: Waiting for Events")
                     continue
@@ -107,13 +108,19 @@ if __name__ == "__main__":
                 
                 
             if avg_samples:
-                
-                dt = datetime.fromtimestamp(avg_samples[-1][0]/ 1000,  tz=timezone.utc)  
+                avg_ms = round(avg_samples[-1][-1],2)
+                ts = avg_samples[-1][0]
+                dt = datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
                 helsinki_tz = zoneinfo.ZoneInfo('Europe/Helsinki')
                 local_dt = dt.astimezone(helsinki_tz)
                                 
-                print("[",dt.strftime("%Y-%m-%d %H:%M:%S"),"]",f"Shard {i} Latency Average: ", round(avg_samples[-1][-1],2) , f"s , Pending: {n_pendings}" )
+                print("[", local_dt.strftime("%Y-%m-%d %H:%M:%S"), "]",
+                    f"Shard {i} Latency Average: {avg_ms} s , Pending: {n_pendings}")
                 # Update last timestamp to last returned bucket timestamp
-                s[i] = avg_samples[-1][0]
+                s[i] = ts
                 
-        time.sleep(5)
+                slow = (avg_ms >= LATENCY_TH)
+                if slow:
+                    print("SLOW")
+                shedding_policy(n_pendings, i, r_stream, slow=slow)
+        time.sleep(1)

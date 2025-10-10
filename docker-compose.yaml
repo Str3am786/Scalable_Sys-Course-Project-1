@@ -48,7 +48,8 @@ services:
       dockerfile: docker/Dockerfile
     container_name: "consumer"
     environment:
-      SHEDDING_MECH: "None"
+      SHEDDING_MECH: "drop_k"
+      SHED_DROP_K: "30"
     volumes:
       - ./matches:/app/matches:rw
     stdin_open: true
@@ -110,4 +111,3 @@ services:
     depends_on:
       - redis
       - redisstats
-
