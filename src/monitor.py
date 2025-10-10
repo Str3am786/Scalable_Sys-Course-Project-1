@@ -12,8 +12,10 @@ N_PREFIX = "metrics:latency"
 rate = 5 * 1000
 
 PENDING_TH = 3
-LATENCY_TH = 1
+LATENCY_TH = 0.453
 RESPONSIVINESS = 3
+
+lat_samples = [] 
 
 
 STATUS = np.zeros(N_SHARD)
@@ -32,9 +34,13 @@ def shedding_policy(n_pendings : int, shard_id : int, r, slow: bool = False) -> 
     if STATUS[shard_id] >= RESPONSIVINESS and prev < RESPONSIVINESS:
         r.hset(f"fshedding:{shard_id}", "active", "True")
         print("SWITCH ONNNNNNNN")
+        #for k in range(50):
+        #    print("SHEDDING ACTIVATED")
     elif  STATUS[shard_id] < RESPONSIVINESS and prev >= RESPONSIVINESS:
         r.hset(f"fshedding:{shard_id}", "active", "False")
         print("SWITCH OFFFFFFF")
+        #for k in range(50):
+        #    print("DEACTIVATED")
     
     else:
         print("CONTINUEEEE")
@@ -118,9 +124,17 @@ if __name__ == "__main__":
                     f"Shard {i} Latency Average: {avg_ms} s , Pending: {n_pendings}")
                 # Update last timestamp to last returned bucket timestamp
                 s[i] = ts
+
+                lat_samples.append(float(avg_ms))
                 
                 slow = (avg_ms >= LATENCY_TH)
                 if slow:
                     print("SLOW")
                 shedding_policy(n_pendings, i, r_stream, slow=slow)
-        time.sleep(1)
+        #time.sleep(1)
+
+        if lat_samples:
+            p95_s = float(np.percentile(lat_samples, 95))
+            print(f"\nP95 latency: {p95_s*1000:.1f} ms ({p95_s:.3f} s) from {len(lat_samples)} samples")
+        else:
+            print("\nNo latency samples collected.")

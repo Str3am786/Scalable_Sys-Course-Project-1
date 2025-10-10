@@ -48,8 +48,8 @@ services:
       dockerfile: docker/Dockerfile
     container_name: "consumer"
     environment:
-      SHEDDING_MECH: "drop_k"
-      SHED_DROP_K: "30"
+      SHEDDING_MECH: "shrink_window"
+      #SHED_WINDOW_MS: 
     volumes:
       - ./matches:/app/matches:rw
     stdin_open: true

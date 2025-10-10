@@ -69,7 +69,6 @@ def shedding_mech(chain: Chain) -> None:
     All strategies keep the chain consistent with your existing logic.
     """
     mech = (SHEDDING_MECH or "None").strip().lower()
-    print(mech)
 
     if mech == "none":
         return
@@ -101,12 +100,7 @@ def shedding_mech(chain: Chain) -> None:
             # (this is safer for downstream continuity checks)
             # NOTE: If you really want to allow empty chains, remove this block.
             # Clear meta so downstream checks don't see stale continuity
-            chain.first_start_station = -1
-            chain.first_ts_ms = 0
-            chain.last_end_station = -1
-            chain.last_ts_ms = 0
-            chain.length_a = 0
-            return
+            pass
         _recalc_chain_meta(chain)
         return
 
@@ -151,7 +145,6 @@ def process_trip_for_bike(state: Dict[str, Chain], lru: LRU,
 
     if shedding_status:
         shedding_mech(ch)
-        state[bike_id] = _init_chain_from_trip(trip)
         return
 
     # Drop out-of-order (or buffer if you later add a reorder heap)
