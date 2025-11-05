@@ -1,7 +1,7 @@
 import json, os, fcntl
 from typing import Dict
 from ..io.redis_client import get_client, get_client_in_docker_net
-from ..config import STREAM_PREFIX, N_SHARDS, MAX_BIKES, MAX_TRIPS_PER_BIKE
+from ..config import STREAM_PREFIX, THRESHOLD, MAX_BIKES, SERIES_PREFIX
 from ..core.sharding import stream_name
 from ..core.lru import LRU
 from ..core.models import Chain, Trip
@@ -17,8 +17,7 @@ def _b(fields, key):
 def get_match_stream(filename : str = "/app/matches/matches.txt"):
     return open(filename,"a", buffering=1)
 
-THRESHOLD = 2
-SERIES_PREFIX = "metrics:latency"
+
 
 
 def ensure_series(r, key, labels):

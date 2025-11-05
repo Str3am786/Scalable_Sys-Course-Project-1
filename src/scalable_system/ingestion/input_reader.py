@@ -2,7 +2,7 @@ import csv, time
 from dateutil import parser as dtparse
 from datetime import timezone
 from typing import Optional
-from ..io.redis_client import get_client, get_default_client, get_client_in_docker_net
+from ..io.redis_client import get_client_in_docker_net
 from ..config import N_SHARDS, STREAM_PREFIX
 from ..core.sharding import shard_for_bike, stream_name
 from pathlib import Path
