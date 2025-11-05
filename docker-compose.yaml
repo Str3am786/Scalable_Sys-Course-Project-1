@@ -1,0 +1,113 @@
+services:
+  producer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: "producer"
+    volumes:
+      - ./2017-citibike-tripdata:/app/data:ro
+    stdin_open: true
+    tty: true
+    command: ["python" , "src/produce.py"]
+    # command: ["/bin/bash"]
+    depends_on:
+      - redis
+      - consumer
+  # producer2:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile
+  #   container_name: "producer2"
+  #   volumes:
+  #     - ./2017-citibike-tripdata:/app/data:ro
+  #   stdin_open: true
+  #   tty: true
+  #   command: ["python" , "src/produce.py"]
+  #   # command: ["/bin/bash"]
+  #   depends_on:
+  #     - redis
+  #     - consumer
+  # producer3:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile
+  #   container_name: "producer3"
+  #   volumes:
+  #     - ./2017-citibike-tripdata:/app/data:ro
+  #   stdin_open: true
+  #   tty: true
+  #   command: ["python" , "src/produce.py"]
+  #   # command: ["/bin/bash"]
+  #   depends_on:
+  #     - redis
+  #     - consumer
+
+  consumer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: "consumer"
+    environment:
+      SHEDDING_MECH: "None"
+    volumes:
+      - ./matches:/app/matches:rw
+    stdin_open: true
+    tty: true 
+    command: ["python", "src/consume.py"]     
+    
+    depends_on:
+      - redis
+      - redisstats
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  redisstats:
+    container_name: redisstats
+    image: redis:latest
+    ports:
+      - "6380:6379"
+
+  redisinsight:
+    container_name: redisinsight
+    image: redis/redisinsight
+    ports:
+      - "5540:5540"
+
+  writer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: "writer"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MATCHES_FILE=/app/matches/matches.txt
+      - MATCH_WRITER_GROUP=file_writers
+      - MATCH_WRITER_NAME=writer-1
+    volumes:
+      - ./matches:/app/matches:rw
+    stdin_open: true
+    tty: true
+    command: [ "python", "src/writer.py" ]
+    depends_on:
+      - redis
+      - consumer
+
+
+  monitor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: "monitor"
+    stdin_open: true
+    tty: true
+    command: ["python" , "src/monitor.py"]
+    # command: ["/bin/bash"]
+    depends_on:
+      - redis
+      - redisstats
+

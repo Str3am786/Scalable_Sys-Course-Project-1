@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scalable_system"
+version = "0.1.0"
+authors = [
+    {name = "Miguel Arroyo"},
+    {name = "Luca Checchin"},
+    {name = "Nikolas Kivimäki"}
+
+]
+description = ""
+requires-python = ">= 3.13"
+dependencies = [
+    "numpy>=2.3.3",
+    "python-dateutil>=2.8,<3",
+    "redis>=4.0",
+    "numpy"
+]
+readme = "README.md"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["scalable_system"]
